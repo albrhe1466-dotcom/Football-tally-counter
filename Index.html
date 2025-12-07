@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>عدّاد كرة القدم - خطوة بخطوة</title>
+  <style>
+    :root{
+      --bg:#0f172a;
+      --bg2:#0b1225;
+      --card:#111827;
+      --text:#f8fafc;
+      --muted:#94a3b8;
+      --green:#22c55e;
+      --green-dark:#16a34a;
+      --red:#ef4444;
+      --gold:#f59e0b;
+      --blue:#3b82f6;
+      --purple:#8b5cf6;
+      --cyan:#22d3ee;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      color:var(--text);
+      min-height:100vh;
+      background:
+        radial-gradient(1200px 400px at 50% -60%, rgba(34,197,94,0.15), transparent 60%),
+        linear-gradient(135deg, var(--bg2), var(--bg) 50%, var(--bg2));
+      overflow-x:hidden;
+    }
+    .app{
+      max-width:980px; margin:0 auto; padding:24px;
+      display:flex; align-items:center; justify-content:center; min-height:100vh;
+    }
+    .card{
+      width:100%;
+      background:var(--card);
+      border:1px solid #1f2937; border-radius:18px;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+      overflow:hidden;
+      position:relative;
+    }
+
+    /* خلفية متحركة خفيفة */
+    .bg-stripes::before, .bg-stripes::after{
+      content:""; position:absolute; inset:0; pointer-events:none;
+    }
+    .bg-stripes::before{
+      background-image: linear-gradient(120deg, rgba(255,255,255,0.04) 12%, transparent 12% 50%, rgba(255,255,255,0.04) 50% 62%, transparent 62%);
+      background-size: 22px 22px;
+      animation: slideBg 16s linear infinite;
+      opacity:.5;
+    }
+    .bg-stripes::after{
+      background: radial-gradient(600px 200px at 10% 110%, rgba(59,130,246,0.12), transparent 70%),
+                  radial-gradient(600px 200px at 90% 0%, rgba(139,92,246,0.12), transparent 70%);
+      filter: blur(2px);
+      opacity:.6;
+      animation: pulseGlow 5s ease-in-out infinite;
+    }
+    @keyframes slideBg{ to { background-position: -200px 0; } }
+    @keyframes pulseGlow{
+      0%,100%{ opacity:.6; } 50%{ opacity:.85; }
+    }
+
+    /* الحاوية */
+    .view{ padding:42px 28px; display:none; }
+    .view.active{ display:block; animation: fadeIn .45s ease both; }
+    @keyframes fadeIn{
+      from{ opacity:0; transform: translateY(6px); }
+      to{ opacity:1; transform: translateY(0); }
+    }
+
+    /* العنوان والكتابة المتحركة */
+    .title{
+      font-size:2rem; font-weight:900; margin:0 0 10px;
+      letter-spacing: .6px;
+    }
+    .subtitle{ color:var(--muted); margin:0 0 20px; }
+    .type{
+      font-family: "Segoe UI", Consolas, monospace;
+      background:#0b1424; border:1px solid #1f2937; border-radius:12px;
+      padding:14px 16px; font-size:1.05rem; white-space:nowrap; overflow:hidden; position:relative;
+    }
+    .type .cursor{
+      display:inline-block; width:10px; background:transparent; margin-inline-start:4px;
+      border-right:2px solid var(--cyan); animation: blink 0.9s steps(1) infinite;
+    }
+    @keyframes blink{ 50%{ border-right-color: transparent; } }
+
+    /* أزرار */
+    .actions{ display:flex; gap:12px; margin-top:18px; flex-wrap:wrap; }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:10px; padding:12px 18px; border-radius:12px; border:1px solid #1f2937;
+      font-weight:700; cursor:pointer; transition: transform .06s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
+    }
+    .btn:active{ transform: scale(0.98); }
+    .btn-green{ background:var(--green); color:#052e12; box-shadow: 0 6px 18px rgba(34,197,94,0.35); }
+    .btn-green:hover{ background:var(--green-dark); }
+    .btn-red{ background:var(--red); color:#250505; box-shadow: 0 6px 18px rgba(239,68,68,0.35); }
+    .btn-blue{ background:var(--blue); color:#061538; box-shadow: 0 6px 18px rgba(59,130,246,0.35); }
+    .btn-ghost{ background:#0b1424; color:var(--text); }
+    .error{
+      background:#2b1030; border:1px solid #7e2439; color:#ffd7df;
+      padding:10px 12px; border-radius:10px; display:none; margin-top:12px;
+    }
+    .error.show{ display:block; animation: shake .25s ease; }
+    @keyframes shake{
+      0%,100%{transform:translateX(0)}
+      25%{transform:translateX(-3px)}
+      75%{transform:translateX(3px)}
+    }
+
+    /* إدخالات */
+    .form{
+      margin-top:14px; display:grid; gap:14px;
+    }
+    .field{
+      background:#0b1424; border:1px solid #1f2937; border-radius:12px; padding:12px;
+    }
+    .label{ color:var(--muted); font-size:.95rem; margin-bottom:8px; }
+    .row{ display:flex; gap:10px; }
+    input[type="text"], input[type="number"]{
+      width:100%; padding:12px 14px; border-radius:10px; border:1px solid #1f2937;
+      background:#0a1422; color:var(--text); outline:none; transition: border .2s, box-shadow .2s;
+    }
+    input[type="text"]:focus, input[type="number"]:focus{
+      border-color:var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+    }
+
+    /* ساعة الإيقاف */
+    .center{
+      display:flex; flex-direction:column; align-items:center; gap:16px; padding:10px;
+    }
+    .stopwatch{
+      width:220px; height:220px; position:relative; border-radius:50%;
+      background: conic-gradient(var(--blue) var(--progress, 0%), #0a1422 0);
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.35);
+      border:2px solid #243447;
+    }
+    .stopwatch-face{
+      position:absolute; inset:14px; border-radius:50%; background:#0a1422;
+      display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px;
+    }
+    .time{ font-size:2rem; font-weight:800; letter-spacing:1px; }
+    .time-label{ color:var(--muted); font-size:.9rem }
+
+    /* نتيجة ومعايدة */
+    .result{
+      display:none; padding:24px; border-top:1px solid #1f2937; margin-top:8px;
+    }
+    .winner{
+      margin-top:12px; background:#0b1424; border:1px solid #1f2937;
+      border-radius:12px; padding:12px;
+    }
+
+    /* كونفيتي */
+    .confetti{
+      position:fixed; inset:0; pointer-events:none; display:none;
+    }
+    .confetti .piece{
+      position:absolute; width:10px; height:16px; opacity:0.9;
+      animation: fall 2.8s linear forwards;
+    }
+    @keyframes fall{
+      0%{ transform: translateY(-20vh) rotate(0deg); opacity:1; }
+      100%{ transform: translateY(110vh) rotate(720deg); opacity:0; }
+    }
+
+    /* شريط الخطوات */
+    .steps{
+      display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;
+    }
+    .step{
+      background:#0b1424; border:1px solid #1f2937; color:var(--muted);
+      padding:6px 10px; border-radius:999px; font-size:.9rem;
+    }
+    .step.active{ color:#d3e4ff; border-color:#3b82f6; background:#0c1a30; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card bg-stripes" id="card">
+
+      <!-- شريط خطوات -->
+      <div class="view active" id="view-welcome">
+        <div class="steps" id="steps">
+          <div class="step active">ترحيب</div>
+          <div class="step">تسمية الفرق</div>
+          <div class="step">عدد اللاعبين</div>
+          <div class="step">ضبط المؤقت</div>
+          <div class="step">التحقق الأخير</div>
+          <div class="step">النتيجة</div>
+        </div>
+
+        <h1 class="title">مرحبًا بك في عدّاد كرة القدم</h1>
+        <p class="subtitle">واجهة تدرّجية مع أنيميشن ممتع شبيه بالألعاب.</p>
+
+        <div class="type" id="type-welcome">
+          <span id="type-welcome-text"></span><span class="cursor"></span>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-green" id="btn-start">ابدأ</button>
+        </div>
+      </div>
+
+      <!-- تسمية الفرق -->
+      <div class="view" id="view-teams">
+        <div class="steps" id="steps2">
+          <div class="step">ترحيب</div>
+          <div class="step active">تسمية الفرق</div>
+          <div class="step">عدد اللاعبين</div>
+          <div class="step">ضبط المؤقت</div>
+          <div class="step">التحقق الأخير</div>
+          <div class="step">النتيجة</div>
+        </div>
+
+        <div class="type" id="type-teams">
+          <span id="type-teams-text"></span><span class="cursor"></span>
+        </div>
+
+        <div class="form">
+          <div class="field">
+            <div class="label">اسم الفريق الأول (يتم تحديده من المدرّب)</div>
+            <input type="text" id="teamA" placeholder="مثال: النصر" autocomplete="off">
+          </div>
+          <div class="field">
+            <div class="label">اسم الفريق الثاني (اسم مختلف)</div>
+            <input type="text" id="teamB" placeholder="مثال: الهلال" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="error" id="error-teams">الرجاء تسمية الفريقين بأسماء مختلفة.</div>
+
+        <div class="actions">
+          <button class="btn btn-ghost" id="back-to-welcome">رجوع</button>
+          <button class="btn btn-green" id="next-to-players">التالي</button>
+        </div>
+      </div>
+
+      <!-- عدد اللاعبين -->
+      <div class="view" id="view-players">
+        <div class="steps">
+          <div class="step">ترحيب</div>
+          <div class="step">تسمية الفرق</div>
+          <div class="step active">عدد اللاعبين</div>
+          <div class="step">ضبط المؤقت</div>
+          <div class="step">التحقق الأخير</div>
+          <div class="step">النتيجة</div>
+        </div>
+
+        <div class="type" id="type-players">
+          <span id="type-players-text"></span><span class="cursor"></span>
+        </div>
+
+        <div class="form">
+          <div class="field">
+            <div class="label">عدد لاعبي الفريق الأول</div>
+            <div class="row">
+              <input type="number" id="playersA" min="1" max="23" placeholder="عدد اللاعبين">
+            </div>
+          </div>
+          <div class="field">
+            <div class="label">عدد لاعبي الفريق الثاني</div>
+            <div class="row">
+              <input type="number" id="playersB" min="1" max="23" placeholder="عدد اللاعبين">
+            </div>
+          </div>
+        </div>
+
+        <div class="error" id="error-players">الرجاء إدخال عدد اللاعبين (من 1 إلى 23) لكلا الفريقين.</div>
+
+        <div class="actions">
+          <button class="btn btn-ghost" id="back-to-teams">رجوع</button>
+          <button class="btn btn-green" id="next-to-timer">التالي</button>
+        </div>
+      </div>
+
+      <!-- ضبط المؤقت -->
+      <div class="view" id="view-timer">
+        <div class="steps">
+          <div class="step">ترحيب</div>
+          <div class="step">تسمية الفرق</div>
+          <div class="step">عدد اللاعبين</div>
+          <div class="step active">ضبط المؤقت</div>
+          <div class="step">التحقق الأخير</div>
+          <div class="step">النتيجة</div>
+        </div>
+
+        <div class="type" id="type-timer">
+          <span id="type-timer-text"></span><span class="cursor"></span>
+        </div>
+
+        <div class="form">
+          <div class="field">
+            <div class="label">ضبط المؤقت (اختياري): دقائق وثوانٍ</div>
+            <div class="row">
+              <input type="number" id="minutes" min="0" max="180" placeholder="دقائق">
+              <input type="number" id="seconds" min="0" max="59" placeholder="ثوانٍ">
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-ghost" id="back-to-players">رجوع</button>
+          <button class="btn btn-green" id="next-to-review">التالي</button>
+        </div>
+      </div>
+
+      <!-- التحقق الأخير (احتياطي عدد اللاعبين) -->
+      <div class="view" id="view-review">
+        <div class="steps">
+          <div class="step">ترحيب</div>
+          <div class="step">تسمية الفرق</div>
+          <div class="step">عدد اللاعبين</div>
+          <div class="step">ضبط المؤقت</div>
+          <div class="step active">التحقق الأخير</div>
+          <div class="step">النتيجة</div>
+        </div>
+
+        <div class="type" id="type-review">
+          <span id="type-review-text"></span><span class="cursor"></span>
+        </div>
+
+        <div class="form">
+          <div class="field">
+            <div class="label">احتياطي: إن لزم، حدّث عدد اللاعبين للفريق الأول</div>
+            <input type="number" id="backupA" min="1" max="23" placeholder="عدد اللاعبين (اختياري)">
+          </div>
+          <div class="field">
+            <div class="label">احتياطي: إن لزم، حدّث عدد اللاعبين للفريق الثاني</div>
+            <input type="number" id="backupB" min="1" max="23" placeholder="عدد اللاعبين (اختياري)">
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-ghost" id="back-to-timer">رجوع</button>
+          <button class="btn btn-green" id="finish-setup">إنهاء الإعداد</button>
+        </div>
+      </div>
+
+      <!-- شاشة التشغيل (المؤقت + النتائج) -->
+      <div class="view" id="view-run">
+        <div class="steps">
+          <div class="step">ترحيب</div>
+          <div class="step">تسمية الفرق</div>
+          <div class="step">عدد اللاعبين</div>
+          <div class="step">ضبط المؤقت</div>
+          <div class="step">التحقق الأخير</div>
+          <div class="step active">النتيجة</div>
+        </div>
+
+        <h2 class="title">المباراة</h2>
+        <p class="subtitle" id="match-subtitle"></p>
+
+        <div class="center">
+          <div class="stopwatch" id="stopwatch" style="--progress:0%">
+            <div class="stopwatch-face">
+              <div class="time" id="time">00:00</div>
+              <div class="time-label" id="time-label">ساعة إيقاف</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-blue" id="btn-start-timer">بدء المؤقت</button>
+            <button class="btn btn-ghost" id="btn-pause" disabled>إيقاف مؤقت</button>
+            <button class="btn btn-ghost" id="btn-resume" disabled>استئناف</button>
+            <button class="btn btn-red" id="btn-skip" disabled>تخطي المؤقت</button>
+            <button class="btn btn-green" id="btn-results" disabled>عرض النتيجة</button>
+          </div>
+
+          <div class="error" id="error-skip">لا يمكن التخطي الآن. الرجاء الانتظار أو إنهاء المؤقت.</div>
+        </div>
+
+        <div class="result" id="result">
+          <h3>النتيجة النهائية</h3>
+          <div class="winner" id="winner">
+            <div><strong>الفائز:</strong> <span id="winner-name">—</span></div>
+            <div style="margin-top:8px">
+              <span id="summary"></span>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-green" id="btn-restart">ابدأ من جديد</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- طبقة الكونفيتي -->
+      <div class="confetti" id="confetti"></div>
+
+    </div>
+  </div>
+
+  <script>
+    // عناصر
+    const views = {
+      welcome: document.getElementById('view-welcome'),
+      teams: document.getElementById('view-teams'),
+      players: document.getElementById('view-players'),
+      timer: document.getElementById('view-timer'),
+      review: document.getElementById('view-review'),
+      run: document.getElementById('view-run')
+    };
+
+    // كتابة متحركة
+    function typeText(el, text, speed=25){
+      el.textContent = '';
+      let i = 0;
+      return new Promise(resolve=>{
+        const id = setInterval(()=>{
+          el.textContent += text.charAt(i++);
+          if(i >= text.length){ clearInterval(id); resolve(); }
+        }, speed);
+      });
+    }
+
+    // مصمم انتقالات
+    function showView(name){
+      Object.values(views).forEach(v=>v.classList.remove('active'));
+      views[name].classList.add('active');
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
+
+    // ترحيب
+    const typeWelcome = document.getElementById('type-welcome-text');
+    typeText(typeWelcome, 'مرحبًا بك في عدّاد كرة القدم — واجهة تفاعلية مع أنيميشن كتابة يُشبه الذكاء الاصطناعي.');
+
+    document.getElementById('btn-start').addEventListener('click', ()=>{
+      showView('teams');
+      typeText(document.getElementById('type-teams-text'), 'يرجى تسمية الفريقين: أدخل اسم الفريق الأول ثم اسم الفريق الثاني.');
+    });
+
+    // تسمية الفرق
+    const teamA = document.getElementById('teamA');
+    const teamB = document.getElementById('teamB');
+    const errTeams = document.getElementById('error-teams');
+
+    document.getElementById('back-to-welcome').addEventListener('click', ()=>{
+      showView('welcome');
+    });
+
+    document.getElementById('next-to-players').addEventListener('click', ()=>{
+      const a = teamA.value.trim();
+      const b = teamB.value.trim();
+      if(!a || !b || a === b){
+        errTeams.classList.add('show');
+        setTimeout(()=>errTeams.classList.remove('show'), 1800);
+        return;
+      }
+      showView('players');
+      typeText(document.getElementById('type-players-text'), 'كم عدد اللاعبين لكل فريق؟ أدخل أرقامًا صحيحة بين 1 و 23.');
+    });
+
+    // عدد اللاعبين
+    const playersA = document.getElementById('playersA');
+    const playersB = document.getElementById('playersB');
+    const errPlayers = document.getElementById('error-players');
+
+    document.getElementById('back-to-teams').addEventListener('click', ()=>{
+      showView('teams');
+    });
+
+    document.getElementById('next-to-timer').addEventListener('click', ()=>{
+      const a = parseInt(playersA.value,10);
+      const b = parseInt(playersB.value,10);
+      const valid = (n)=> Number.isFinite(n) && n >=1 && n <=23;
+      if(!valid(a) || !valid(b)){
+        errPlayers.classList.add('show');
+        setTimeout(()=>errPlayers.classList.remove('show'), 1800);
+        return;
+      }
+      showView('timer');
+      typeText(document.getElementById('type-timer-text'), 'يرجى ضبط المؤقت (اختياري). يمكنك إدخال الدقائق والثواني، ثم المتابعة.');
+    });
+
+    // المؤقت
+    const minutes = document.getElementById('minutes');
+    const seconds = document.getElementById('seconds');
+
+    document.getElementById('back-to-players').addEventListener('click', ()=>{
+      showView('players');
+    });
+
+    document.getElementById('next-to-review').addEventListener('click', ()=>{
+      showView('review');
+      typeText(document.getElementById('type-review-text'), 'تحقق أخير: يمكنك تعديل عدد اللاعبين احتياطيًا إن رغبت، ثم اضغط إنهاء الإعداد.');
+    });
+
+    // التحقق الأخير
+    const backupA = document.getElementById('backupA');
+    const backupB = document.getElementById('backupB');
+
+    document.getElementById('back-to-timer').addEventListener('click', ()=>{
+      showView('timer');
+    });
+
+    // حالة المباراة
+    let totalSeconds = 0;
+    let remaining = 0;
+    let timerId = null;
+    let paused = false;
+    const timeEl = document.getElementById('time');
+    const timeLabel = document.getElementById('time-label');
+    const stopwatch = document.getElementById('stopwatch');
+
+    function formatTime(s){
+      const m = Math.floor(s/60);
+      const sec = s % 60;
+      return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    }
+    function setProgress(){
+      if(totalSeconds <= 0){ stopwatch.style.setProperty('--progress', '0%'); return; }
+      const pct = Math.round(((totalSeconds - remaining)/totalSeconds)*100);
+      stopwatch.style.setProperty('--progress', `${pct}%`);
+    }
+    function resetTimerUI(){
+      timeEl.textContent = '00:00';
+      timeLabel.textContent = 'ساعة إيقاف';
+      stopwatch.style.setProperty('--progress', '0%');
+    }
+
+    // إنهاء الإعداد
+    document.getElementById('finish-setup').addEventListener('click', ()=>{
+      // تثبيت القيم
+      const aName = teamA.value.trim();
+      const bName = teamB.value.trim();
+      const aCount = parseInt(backupA.value || playersA.value,10);
+      const bCount = parseInt(backupB.value || playersB.value,10);
+
+      const m = parseInt(minutes.value || '0',10);
+      const s = parseInt(seconds.value || '0',10);
+      totalSeconds = (Number.isFinite(m)?m:0)*60 + (Number.isFinite(s)?s:0);
+      remaining = totalSeconds;
+
+      showView('run');
+      document.getElementById('match-subtitle').textContent =
+        `المباراة بين "${aName}" و "${bName}" — لاعبو ${aName}: ${aCount} | لاعبو ${bName}: ${bCount}`;
+
+      resetTimerUI();
+
+      // تمكين البدء فقط
+      document.getElementById('btn-start-timer').disabled = false;
+      document.getElementById('btn-pause').disabled = true;
+      document.getElementById('btn-resume').disabled = true;
+      document.getElementById('btn-skip').disabled = true;
+      document.getElementById('btn-results').disabled = true;
+      document.getElementById('result').style.display = 'none';
+    });
+
+    // تشغيل المؤقت
+    const btnStartTimer = document.getElementById('btn-start-timer');
+    const btnPause = document.getElementById('btn-pause');
+    const btnResume = document.getElementById('btn-resume');
+    const btnSkip = document.getElementById('btn-skip');
+    const btnResults = document.getElementById('btn-results');
+    const errSkip = document.getElementById('error-skip');
+
+    btnStartTimer.addEventListener('click', ()=>{
+      // إذا المؤقت صفر، نعمل كساعة إيقاف بدون انتهاء تلقائي
+      if(totalSeconds > 0){
+        remaining = totalSeconds;
+        timeEl.textContent = formatTime(remaining);
+        timeLabel.textContent = 'جارٍ العد…';
+        setProgress();
+        timerId = setInterval(()=>{
+          if(paused) return;
+          remaining--;
+          timeEl.textContent = formatTime(Math.max(remaining,0));
+          setProgress();
+          if(remaining <= 0){
+            clearInterval(timerId);
+            timerId = null;
+            timeLabel.textContent = 'انتهى الوقت';
+            btnSkip.disabled = false; // بعد الانتهاء يمكن الوصول للنتائج
+            btnResults.disabled = false;
+            partyTime(); // حفلة
+          }
+        }, 1000);
+      } else {
+        // ساعة إيقاف فقط: نُمكّن تخطي ونتائج مباشرة
+        timeLabel.textContent = 'ساعة إيقاف';
+        btnSkip.disabled = false;
+        btnResults.disabled = false;
+      }
+      btnStartTimer.disabled = true;
+      btnPause.disabled = false;
+    });
+
+    btnPause.addEventListener('click', ()=>{
+      if(timerId){
+        paused = true;
+        btnPause.disabled = true;
+        btnResume.disabled = false;
+        timeLabel.textContent = 'موقوف مؤقتًا';
+      }
+    });
+
+    btnResume.addEventListener('click', ()=>{
+      if(timerId){
+        paused = false;
+        btnResume.disabled = true;
+        btnPause.disabled = false;
+        timeLabel.textContent = 'جارٍ العد…';
+      }
+    });
+
+    btnSkip.addEventListener('click', ()=>{
+      // لا يسمح بالتخطي إذا المؤقت يعمل ولم ينتهِ
+      const running = !!timerId && !paused;
+      const hasTime = totalSeconds > 0;
+      if(hasTime && running){
+        errSkip.classList.add('show');
+        setTimeout(()=>errSkip.classList.remove('show'), 1600);
+        return;
+      }
+      // إيقاف المؤقت إن كان موجودًا
+      if(timerId){ clearInterval(timerId); timerId = null; }
+      timeLabel.textContent = 'تم التخطي';
+      btnResults.disabled = false;
+    });
+
+    btnResults.addEventListener('click', ()=>{
+      partyTime();
+      showResults();
+    });
+
+    // نتيجة + حفلة
+    const confettiLayer = document.getElementById('confetti');
+    function partyTime(){
+      confettiLayer.innerHTML = '';
+      confettiLayer.style.display = 'block';
+      const colors = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#22d3ee','#ffffff'];
+      const count = 120;
+      for(let i=0;i<count;i++){
+        const piece = document.createElement('div');
+        piece.className = 'piece';
+        const color = colors[Math.floor(Math.random()*colors.length)];
+        piece.style.background = color;
+        piece.style.left = Math.random()*100 + 'vw';
+        piece.style.animationDelay = (Math.random()*1.2) + 's';
+        piece.style.transform = `translateY(-20vh) rotate(${Math.random()*720}deg)`;
+        confettiLayer.appendChild(piece);
+      }
+      setTimeout(()=>{ confettiLayer.style.display = 'none'; }, 3000);
+    }
+
+    function showResults(){
+      // مثال: لا يوجد تسجيل أهداف هنا، نعرض الفائز عشوائيًا للتجربة.
+      const aName = teamA.value.trim();
+      const bName = teamB.value.trim();
+
+      // منطق بسيط لاختيار الفائز: إذا الوقت انتهى، نعتمد فرق الوقت كمحفّز عشوائي
+      const winner = Math.random() < 0.5 ? aName : bName;
+      const summaryText = `المباراة بين ${aName} و ${bName} انتهت. الفائز: ${winner}.`;
+
+      document.getElementById('winner-name').textContent = winner;
+      document.getElementById('summary').textContent = summaryText;
+
+      document.getElementById('result').style.display = 'block';
+    }
+
+    // إعادة البدء
+    document.getElementById('btn-restart').addEventListener('click', ()=>{
+      // إعادة الحالة العامة
+      if(timerId){ clearInterval(timerId); timerId = null; }
+      paused = false; totalSeconds = 0; remaining = 0;
+      resetTimerUI();
+
+      // تفريغ الحقول
+      teamA.value = ''; teamB.value = '';
+      playersA.value = ''; playersB.value = '';
+      minutes.value = ''; seconds.value = '';
+      backupA.value = ''; backupB.value = '';
+
+      // العودة لبداية
+      showView('welcome');
+      typeText(typeWelcome, 'مرحبًا بك في عدّاد كرة القدم — واجهة تفاعلية مع أنيميشن كتابة يُشبه الذكاء الاصطناعي.');
+    });
+
+    // كتابة توضيحات لكل خطوة عند العرض الأول
+    const observers = {
+      players: false,
+      timer: false,
+      review: false,
+    };
+
+    const typePlayers = document.getElementById('type-players-text');
+    const typeTimer = document.getElementById('type-timer-text');
+    const typeReview = document.getElementById('type-review-text');
+
+    // عند تحميل الصفحة، إضافة كتابة خطوة الترحيب جاهزة
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // لا شيء إضافي الآن
+    });
+
+  </script>
+</body>
+</html>
+// زر عرض النتيجة
+const btnResults = document.getElementById('btn-results');
+const resultBox = document.getElementById('result');
+const confettiLayer = document.getElementById('confetti');
+const winnerName = document.getElementById('winner-name');
+const summary = document.getElementById('summary');
+
+btnResults.addEventListener('click', () => {
+  // تشغيل الكونفيتي
+  confettiLayer.innerHTML = '';
+  confettiLayer.style.display = 'block';
+  const colors = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#22d3ee','#ffffff'];
+  const count = 100;
+  for(let i=0;i<count;i++){
+    const piece = document.createElement('div');
+    piece.className = 'piece';
+    piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+    piece.style.left = Math.random()*100 + 'vw';
+    piece.style.animationDelay = (Math.random()*1.5) + 's';
+    confettiLayer.appendChild(piece);
+  }
+  setTimeout(()=>{ confettiLayer.style.display = 'none'; }, 3000);
+
+  // إظهار النتيجة
+  const aName = document.getElementById('teamA').value.trim();
+  const bName = document.getElementById('teamB').value.trim();
+  const winner = Math.random() < 0.5 ? aName : bName; // منطق بسيط للفائز
+  winnerName.textContent = winner;
+  summary.textContent = `المباراة بين ${aName} و ${bName} انتهت. الفائز: ${winner}.`;
+
+  resultBox.style.display = 'block';
+});
